@@ -36,3 +36,51 @@ os_code_list, os_type_list. В этой же функции создать гл�
 
 ПРОШУ ВАС НЕ УДАЛЯТЬ СЛУЖЕБНЫЕ ФАЙЛЫ TXT И ИТОГОВЫЙ ФАЙЛ CSV!!!
 """
+
+import os
+import re
+import csv
+
+data_files = [file_name for file_name in os.listdir('.') if file_name.find('info_') == 0]
+
+
+def get_data():
+    main_data = [["Изготовитель системы", "Название ОС", "Код продукта", "Тип системы"]]
+    os_prod_list = []
+    os_name_list = []
+    os_code_list = []
+    os_type_list = []
+
+    columns_data = [list(os_prod_list), os_name_list, os_code_list, os_type_list]
+
+    for file_name in data_files:
+        with open(file_name, 'r', encoding='utf-8') as f_n:
+            for line in f_n:
+                for i, column_name in enumerate(main_data[0]):
+                    if re.search(column_name, line):
+                        columns_data[i].append(line.split(":")[1].strip())
+
+    for i in range(len(data_files)):
+        row = [column[i] for column in columns_data]
+        """
+        В условии предлагают добавлять к каждой строке нумерацию: "1,LENOVO,Win..."
+        При этом, не добавляют ее в шапку столбцов. В результате, количество строк в шапке
+        и в теле таблицы, не сходится
+        """
+        # row.insert(0, i + 1)
+        main_data.append(row)
+
+    return main_data
+
+
+def write_to_csv():
+    file_name = input("Введите имя файла, в текущей директории: ")
+    data = get_data()
+
+    with open(file_name, 'w', encoding='utf-8') as f_n:
+        f_n_writer = csv.writer(f_n)
+        for row in data:
+            f_n_writer.writerow(row)
+
+
+write_to_csv()
