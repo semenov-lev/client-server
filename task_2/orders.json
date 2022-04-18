@@ -1,3 +1,11 @@
 {
-    "orders": []
+    "orders": [
+        {
+            "item": "\u0441\u043a\u0430\u043d\u0435\u0440",
+            "quantity": 30,
+            "price": 5000,
+            "buyer": "Petrov P.P.",
+            "date": "11.01.2018"
+        }
+    ]
 }
