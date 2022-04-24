@@ -3,13 +3,13 @@ import json
 from common.variables import ENCODING
 
 
-def encode_message(data):
-    js_data = json.dumps(data)
+def encode_message(message):
+    js_data = json.dumps(message)
     jim_bytes = js_data.encode(ENCODING)
     return jim_bytes
 
 
-def decode_message(jim_bytes):
+def decode_data(jim_bytes):
     data = {}
     try:
         js_data = jim_bytes.decode(ENCODING)

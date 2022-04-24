@@ -4,7 +4,7 @@ from ipaddress import ip_address
 from socket import socket, AF_INET, SOCK_STREAM
 
 import common.variables as variables
-from common.utils import encode_message, decode_message
+from common.utils import encode_message, decode_data
 
 
 def message_handler(message):
@@ -13,7 +13,6 @@ def message_handler(message):
     timestamp = int(time.time())
 
     try:
-
         if message["action"] == action and message["time"] and message["user"]["account_name"] == account_name:
 
             message = {"response": "200",
@@ -32,7 +31,7 @@ def message_handler(message):
                    "time": timestamp,
                    "alert": "Неправильный запрос/JSON-объект"}
 
-    return encode_message(message)
+    return message
 
 
 def main():
@@ -70,11 +69,12 @@ def main():
 
         received_data = client.recv(variables.MAX_PACKAGE_LENGTH)
 
-        received_message = decode_message(received_data)
+        received_message = decode_data(received_data)
 
         print(f"Сообщение от клиента: {received_message}")
 
-        response_data = message_handler(received_message)
+        response_message = message_handler(received_message)
+        response_data = encode_message(response_message)
 
         client.send(response_data)
 

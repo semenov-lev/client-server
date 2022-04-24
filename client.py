@@ -4,7 +4,7 @@ from ipaddress import ip_address
 from socket import socket, AF_INET, SOCK_STREAM
 
 import common.variables as variables
-from common.utils import encode_message, decode_message
+from common.utils import encode_message, decode_data
 
 
 def presence_message():
@@ -61,7 +61,7 @@ def main():
 
     data = s.recv(variables.MAX_PACKAGE_LENGTH)
 
-    print(f"Полученное сообщение от сервера: {decode_message(data)}")
+    print(f"Полученное сообщение от сервера: {decode_data(data)}")
 
     s.close()
 
