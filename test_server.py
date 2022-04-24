@@ -31,15 +31,15 @@ class TestMessageHandler(unittest.TestCase):
             "user": {}
         }
 
-    def testresponse200(self):
+    def test_response_200(self):
         result = message_handler(self.message_200)
         self.assertEqual(result["response"], "200")
 
-    def testresponse404(self):
+    def test_response_404(self):
         result = message_handler(self.message_404)
         self.assertEqual(result["response"], "404")
 
-    def testresponse400(self):
+    def test_response_400(self):
         result = message_handler(self.message_400)
         self.assertEqual(result["response"], "400")
 

@@ -23,7 +23,7 @@ def presence_message():
         }
     }
 
-    return encode_message(message)
+    return message
 
 
 def main():
@@ -57,7 +57,10 @@ def main():
     s = socket(AF_INET, SOCK_STREAM)
     s.connect((server_address, server_port))
 
-    s.send(presence_message())
+    request_message = presence_message()
+    request_data = encode_message(request_message)
+
+    s.send(request_data)
 
     data = s.recv(variables.MAX_PACKAGE_LENGTH)
 
