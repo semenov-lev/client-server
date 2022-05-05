@@ -1,4 +1,8 @@
+import os
+import sys
 import unittest
+
+sys.path.append(os.path.join(os.getcwd(), '..'))
 from client import presence_message
 from common import variables
 
