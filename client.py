@@ -1,10 +1,14 @@
 import sys
 import time
+import logging
 from ipaddress import ip_address
 from socket import socket, AF_INET, SOCK_STREAM
 
 import common.variables as variables
 from common.utils import encode_message, decode_data
+from log import client_log_config
+
+CLIENT_LOGGER = logging.getLogger("client_logger")
 
 
 def presence_message():
@@ -37,10 +41,10 @@ def main():
             raise KeyError
         server_address = str(ip_address(sys.argv[sys.argv.index("-a") + 1]))
     except KeyError:
-        print("Должен быть указан адрес: -a <address>")
+        CLIENT_LOGGER.error("Должен быть указан адрес: -a <address>")
         sys.exit(1)
     except ValueError:
-        print("Некорректно введен адрес")
+        CLIENT_LOGGER.error("Некорректно введен адрес")
         sys.exit(1)
 
     try:
@@ -51,9 +55,10 @@ def main():
         else:
             server_port = variables.DEFAULT_PORT
     except ValueError:
-        print("Значение <port> должно быть числом, в диапазоне с 1024 по 65535")
+        CLIENT_LOGGER.error("Значение <port> должно быть числом, в диапазоне с 1024 по 65535")
         sys.exit(1)
 
+    CLIENT_LOGGER.debug("Подключаемся к серверу")
     s = socket(AF_INET, SOCK_STREAM)
     s.connect((server_address, server_port))
 
@@ -61,12 +66,15 @@ def main():
     request_data = encode_message(request_message)
 
     s.send(request_data)
+    CLIENT_LOGGER.info(f"Отправляем сообщение на сервер")
 
     data = s.recv(variables.MAX_PACKAGE_LENGTH)
 
-    print(f"Полученное сообщение от сервера: {decode_data(data)}")
+    CLIENT_LOGGER.info(f"Код ответа сервера: {decode_data(data)['response']}")
 
     s.close()
+
+    CLIENT_LOGGER.debug("Соединение закрыто")
 
 
 if __name__ == "__main__":

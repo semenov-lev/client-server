@@ -1,15 +1,15 @@
-import logging
+import logging.handlers
 import os
 
 
 FORMAT = logging.Formatter("%(asctime)s %(levelname)s %(module)s %(message)s")
 
-FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "client.log")
+FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "server.log")
 
-LOGGER_HANDLER = logging.FileHandler(FILE_PATH, encoding='utf-8')
+LOGGER_HANDLER = logging.handlers.TimedRotatingFileHandler(FILE_PATH, "D", 1, encoding='utf-8')
 LOGGER_HANDLER.setFormatter(FORMAT)
 
-LOGGER = logging.getLogger("client_logger")
+LOGGER = logging.getLogger("server_logger")
 LOGGER.addHandler(LOGGER_HANDLER)
 LOGGER.setLevel(logging.DEBUG)
 
