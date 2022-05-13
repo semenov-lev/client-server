@@ -1,13 +1,17 @@
 import json
+
 from common.variables import ENCODING
+from decorators import log
 
 
+@log
 def encode_message(message):
     js_data = json.dumps(message)
     jim_bytes = js_data.encode(ENCODING)
     return jim_bytes
 
 
+@log
 def decode_data(jim_bytes):
     data = {}
     try:

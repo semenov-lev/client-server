@@ -7,10 +7,12 @@ from socket import socket, AF_INET, SOCK_STREAM
 import common.variables as variables
 from common.utils import encode_message, decode_data
 from log import client_log_config
+from decorators import log
 
 CLIENT_LOGGER = logging.getLogger("client_logger")
 
 
+@log
 def presence_message():
     action = variables.PRESENCE
     timestamp = int(time.time())

@@ -7,10 +7,12 @@ from socket import socket, AF_INET, SOCK_STREAM
 import common.variables as variables
 from common.utils import encode_message, decode_data
 from log import server_log_config
+from decorators import log
 
 SERVER_LOGGER = logging.getLogger("server_logger")
 
 
+@log
 def message_handler(message):
     action = variables.PRESENCE
     account_name = variables.ACCOUNT_NAME
