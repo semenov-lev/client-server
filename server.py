@@ -1,6 +1,8 @@
 import sys
 import time
 import logging
+import argparse
+from select import select
 from ipaddress import ip_address
 from socket import socket, AF_INET, SOCK_STREAM
 
@@ -13,31 +15,58 @@ SERVER_LOGGER = logging.getLogger("server_logger")
 
 
 @log
+def arg_parser():
+    parser = argparse.ArgumentParser(description='Server script')
+    parser.add_argument('-a', dest='address', default='')
+    parser.add_argument('-p', dest='port', default=variables.DEFAULT_PORT, type=int)
+    args = parser.parse_args()
+    address = args.address
+    port = args.port
+    return address, port
+
+
+@log
 def message_handler(message):
-    action = variables.PRESENCE
-    account_name = variables.ACCOUNT_NAME
+    """
+    Функция принимает сообщение-словарь,
+    проверяет информацию и возвращает сообщение-словарь
+
+    :param message
+    :return message
+    """
+
     timestamp = int(time.time())
+    account_names = [variables.LISTEN_ACCOUNT_NAME, variables.SENDER_ACCOUNT_NAME]
 
     try:
         SERVER_LOGGER.debug("Обработка сообщения от клиента")
-        if message["action"] == action and message["time"] and message["user"]["account_name"] == account_name:
-            SERVER_LOGGER.debug("Response 200")
-            message = {"response": "200",
-                       "time": timestamp}
 
-        elif message["action"] == action and message["time"] and message["user"]["account_name"] != account_name:
-            SERVER_LOGGER.warning("Response 404")
-            message = {"response": "404",
-                       "time": timestamp,
-                       "alert": "Пользователь/чат отсутствует на сервере"}
+        if message["action"] == variables.PRESENCE:
+            if message["time"] and message["user"]["account_name"] in account_names:
+                SERVER_LOGGER.debug("Response 200")
+                return {"response": "200",
+                        "time": timestamp}
+
+            elif message["time"] and message["user"]["account_name"] not in account_names:
+                SERVER_LOGGER.warning("Response 404")
+                return {"response": "404",
+                        "time": timestamp,
+                        "alert": "Пользователь/чат отсутствует на сервере"}
+
+        elif message["action"] == variables.MSG:
+            if message["time"] and message["message"] and message["from"] == variables.SENDER_ACCOUNT_NAME \
+                    and message["to"] == "#all":
+                SERVER_LOGGER.debug("Response 200")
+                return message
+
         else:
             raise KeyError
 
     except (KeyError, TypeError):
-        SERVER_LOGGER.warning("Некорректный запрос от клиента, код 400")
-        message = {"response": "400",
-                   "time": timestamp,
-                   "alert": "Неправильный запрос/JSON-объект"}
+        SERVER_LOGGER.warning("Response 400")
+        return {"response": "400",
+                "time": timestamp,
+                "alert": "Неправильный запрос/JSON-объект"}
 
     return message
 
@@ -48,51 +77,66 @@ def main():
     :return:
     """
 
-    SERVER_LOGGER.debug(f"Запуск сервера")
+    address, port = arg_parser()
 
     try:
-        if "-a" in sys.argv:
-            address = str(ip_address(sys.argv[sys.argv.index("-a") + 1]))
-        else:
-            address = ''
+        ip_address(address)
     except ValueError:
-        SERVER_LOGGER.error("Некорректно введен адрес")
+        SERVER_LOGGER.critical("Некорректно введен адрес")
         sys.exit(1)
 
-    try:
-        if "-p" in sys.argv:
-            port = int(sys.argv[sys.argv.index("-p") + 1])
-            if 1024 > port > 65535:
-                raise ValueError
-        else:
-            port = variables.DEFAULT_PORT
-    except ValueError:
-        SERVER_LOGGER.error("Значение <port> должно быть числом, в диапазоне с 1024 по 65535")
+    if 1024 > port or port > 65535:
+        SERVER_LOGGER.critical("Значение <port> должно быть числом, в диапазоне с 1024 по 65535")
         sys.exit(1)
+
+    SERVER_LOGGER.debug(f"Запуск сервера c адрессом: {address}, портом: {port}")
 
     s = socket(AF_INET, SOCK_STREAM)
     s.bind((address, port))
+    s.settimeout(0.5)
     s.listen(variables.MAX_CONNECTIONS)
+
+    all_clients = []
+    messages = []
 
     while True:
         SERVER_LOGGER.debug("Ожидание клиента")
 
-        client, client_address = s.accept()
+        try:
+            client, client_address = s.accept()
+        except OSError:
+            pass
+        else:
+            all_clients.append(client)
+        finally:
+            wait = 0
+            receive_lst = []
+            awaiting_lst = []
 
-        received_data = client.recv(variables.MAX_PACKAGE_LENGTH)
+            try:
+                if all_clients:
+                    receive_lst, awaiting_lst, errors = select(all_clients, all_clients, [], wait)
+            except OSError:
+                pass
 
-        received_message = decode_data(received_data)
+            if receive_lst:
+                for recv_client in receive_lst:
+                    try:
+                        SERVER_LOGGER.info(f"Получено сообщение от клиента {recv_client.getpeername()}")
+                        received_data = recv_client.recv(variables.MAX_PACKAGE_LENGTH)
+                        received_msg = decode_data(received_data)
+                        messages.append(message_handler(received_msg))
+                    except:
+                        SERVER_LOGGER.info(f"Клиент {recv_client.getpeername()} отключился")
+                        all_clients.remove(recv_client)
 
-        SERVER_LOGGER.info(f"Получено сообщение от клиента {client_address}")
-
-        response_message = message_handler(received_message)
-        response_data = encode_message(response_message)
-
-        SERVER_LOGGER.info(f"Ответ клиенту {client_address}")
-
-        client.send(response_data)
-
-        client.close()
+            if awaiting_lst and messages:
+                for awaiting_client in awaiting_lst:
+                    try:
+                        awaiting_client.send(encode_message(messages.pop(0)))
+                    except:
+                        SERVER_LOGGER.info(f"Клиент {awaiting_client.getpeername()} отключился")
+                        all_clients.remove(awaiting_client)
 
 
 if __name__ == "__main__":
