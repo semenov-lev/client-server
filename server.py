@@ -17,7 +17,7 @@ SERVER_LOGGER = logging.getLogger("server_logger")
 @log
 def arg_parser():
     parser = argparse.ArgumentParser(description='Server script')
-    parser.add_argument('-a', dest='address', default='')
+    parser.add_argument('-a', dest='address', default=variables.DEFAULT_IP_ADDRESS)
     parser.add_argument('-p', dest='port', default=variables.DEFAULT_PORT, type=int)
     args = parser.parse_args()
     address = args.address

@@ -1,3 +1,4 @@
+import argparse
 import sys
 import time
 import logging
@@ -13,13 +14,25 @@ CLIENT_LOGGER = logging.getLogger("client_logger")
 
 
 @log
-def presence_message():
+def arg_parser():
+    parser = argparse.ArgumentParser(description='Client script')
+    parser.add_argument('-a', dest='address', default='')
+    parser.add_argument('-p', dest='port', default=variables.DEFAULT_PORT, type=int)
+    parser.add_argument('-m', dest='mode', default="listen")
+    args = parser.parse_args()
+    address = args.address
+    mode = args.mode
+    port = args.port
+    return address, port, mode
+
+
+@log
+def presence_message(account_name):
     action = variables.PRESENCE
     timestamp = int(time.time())
     status = "Я здесь!"
-    account_name = "test_account"
 
-    message = {
+    return {
         "action": action,
         "time": timestamp,
         "type": "status",
@@ -29,54 +42,80 @@ def presence_message():
         }
     }
 
-    return message
+
+@log
+def message_to_all(message, account_name):
+    timestamp = int(time.time())
+
+    return {
+        "action": "msg",
+        "time": timestamp,
+        "to": "#all",
+        "from": account_name,
+        "message": message
+    }
 
 
 def main():
     """
-    client.py -a <address> -p [<port>]
+    client.py -a <address> -p [<port>] -m [mode]
     :return:
     """
 
-    try:
-        if "-a" not in sys.argv:
-            raise KeyError
-        server_address = str(ip_address(sys.argv[sys.argv.index("-a") + 1]))
-    except KeyError:
-        CLIENT_LOGGER.error("Должен быть указан адрес: -a <address>")
-        sys.exit(1)
-    except ValueError:
-        CLIENT_LOGGER.error("Некорректно введен адрес")
-        sys.exit(1)
+    server_address, server_port, mode = arg_parser()
 
     try:
-        if "-p" in sys.argv:
-            server_port = int(sys.argv[sys.argv.index("-p") + 1])
-            if 1024 > server_port > 65535:
-                raise ValueError
-        else:
-            server_port = variables.DEFAULT_PORT
+        ip_address(server_address)
     except ValueError:
-        CLIENT_LOGGER.error("Значение <port> должно быть числом, в диапазоне с 1024 по 65535")
+        CLIENT_LOGGER.critical("Некорректно введен адрес")
         sys.exit(1)
 
-    CLIENT_LOGGER.debug("Подключаемся к серверу")
-    s = socket(AF_INET, SOCK_STREAM)
-    s.connect((server_address, server_port))
+    if 1024 > server_port or server_port > 65535:
+        CLIENT_LOGGER.critical("Значение <port> должно быть числом, в диапазоне с 1024 по 65535")
+        sys.exit(1)
 
-    request_message = presence_message()
-    request_data = encode_message(request_message)
+    if mode not in ('listen', 'sender'):
+        CLIENT_LOGGER.critical("Режим может быть только 'listen', или 'sender'")
+        sys.exit(1)
 
-    s.send(request_data)
-    CLIENT_LOGGER.info(f"Отправляем сообщение на сервер")
+    if mode == 'sender':
+        ACCOUNT_NAME = variables.SENDER_ACCOUNT_NAME
+    else:
+        ACCOUNT_NAME = variables.LISTEN_ACCOUNT_NAME
 
-    data = s.recv(variables.MAX_PACKAGE_LENGTH)
+    CLIENT_LOGGER.debug(f"Подключаемся к серверу в режиме '{mode}'")
 
-    CLIENT_LOGGER.info(f"Код ответа сервера: {decode_data(data)['response']}")
+    try:
+        s = socket(AF_INET, SOCK_STREAM)
+        s.connect((server_address, server_port))
 
-    s.close()
+        CLIENT_LOGGER.info(f"Отправляем сообщение о присутствии")
+        presence_data = encode_message(presence_message(ACCOUNT_NAME))
+        s.send(presence_data)
 
-    CLIENT_LOGGER.debug("Соединение закрыто")
+        data = s.recv(variables.MAX_PACKAGE_LENGTH)
+        response_code = decode_data(data)['response']
+
+        CLIENT_LOGGER.info(f"Код ответа сервера: {response_code}")
+    except:
+        CLIENT_LOGGER.critical("Произошла неведомая ошибка")
+        sys.exit(1)
+
+    while True:
+        try:
+            if mode == 'listen':
+                receive_message = decode_data(s.recv(variables.MAX_PACKAGE_LENGTH))
+                print(f"Сообщение от пользователя {receive_message['from']}:\n"
+                      f"{receive_message['message']}")
+
+            if mode == 'sender':
+                # msg = input("Введите сообщение: ")
+                msg = "Hello, world!"
+                message_data = encode_message(message_to_all(msg, ACCOUNT_NAME))
+                s.send(encode_message(message_data))
+        except:
+            CLIENT_LOGGER.debug("Соединение закрыто")
+            sys.exit(1)
 
 
 if __name__ == "__main__":
