@@ -56,6 +56,21 @@ def message_to_all(message, account_name):
     }
 
 
+@log
+def message_handler(message):
+    if "action" in message and message["action"] == "msg":
+        print(f"Сообщение от пользователя {message['from']}:\n"
+              f"{message['message']}")
+        CLIENT_LOGGER.info(f"Сообщение от пользователя {message['from']}: {message['message']}")
+    else:
+        if message["response"] == "200":
+            print(f"Сообщение от сервера: {message}")
+            CLIENT_LOGGER.info(f"Response: 200, ОК")
+        else:
+            print(f"Сообщение от сервера: {message}")
+            CLIENT_LOGGER.warning(f"Response: {message}!!!")
+
+
 def main():
     """
     client.py -a <address> -p [<port>] -m [mode]
@@ -94,28 +109,33 @@ def main():
         s.send(presence_data)
 
         data = s.recv(variables.MAX_PACKAGE_LENGTH)
-        response_code = decode_data(data)['response']
+        message_handler(decode_data(data))
 
-        CLIENT_LOGGER.info(f"Код ответа сервера: {response_code}")
     except:
         CLIENT_LOGGER.critical("Произошла неведомая ошибка")
         sys.exit(1)
 
     while True:
-        try:
-            if mode == 'listen':
-                receive_message = decode_data(s.recv(variables.MAX_PACKAGE_LENGTH))
-                print(f"Сообщение от пользователя {receive_message['from']}:\n"
-                      f"{receive_message['message']}")
+        if mode == 'sender':
+            try:
+                msg = input("Ввести сообщение, или '/q' для выхода: ")
+                if msg == '/q':
+                    s.close()
+                    sys.exit(0)
 
-            if mode == 'sender':
-                # msg = input("Введите сообщение: ")
-                msg = "Hello, world!"
                 message_data = encode_message(message_to_all(msg, ACCOUNT_NAME))
-                s.send(encode_message(message_data))
-        except:
-            CLIENT_LOGGER.debug("Соединение закрыто")
-            sys.exit(1)
+                s.send(message_data)
+            except:
+                CLIENT_LOGGER.debug(f"Соединение закрыто у режима {mode}")
+                sys.exit(1)
+
+        if mode == 'listen':
+            try:
+                receive_message = decode_data(s.recv(variables.MAX_PACKAGE_LENGTH))
+                message_handler(receive_message)
+            except:
+                CLIENT_LOGGER.debug(f"Соединение закрыто у режима {mode}")
+                sys.exit(1)
 
 
 if __name__ == "__main__":

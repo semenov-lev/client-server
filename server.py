@@ -100,14 +100,13 @@ def main():
     messages = []
 
     while True:
-        SERVER_LOGGER.debug("Ожидание клиента")
-
         try:
             client, client_address = s.accept()
         except OSError:
             pass
         else:
             all_clients.append(client)
+            SERVER_LOGGER.info(f"Клиент {client.getpeername()} подключился")
         finally:
             wait = 0
             receive_lst = []
@@ -125,15 +124,17 @@ def main():
                         SERVER_LOGGER.info(f"Получено сообщение от клиента {recv_client.getpeername()}")
                         received_data = recv_client.recv(variables.MAX_PACKAGE_LENGTH)
                         received_msg = decode_data(received_data)
+                        print(f"Получил сообщение {received_msg}")
                         messages.append(message_handler(received_msg))
                     except:
                         SERVER_LOGGER.info(f"Клиент {recv_client.getpeername()} отключился")
                         all_clients.remove(recv_client)
 
             if awaiting_lst and messages:
+                message_data = encode_message(messages.pop(0))
                 for awaiting_client in awaiting_lst:
                     try:
-                        awaiting_client.send(encode_message(messages.pop(0)))
+                        awaiting_client.send(message_data)
                     except:
                         SERVER_LOGGER.info(f"Клиент {awaiting_client.getpeername()} отключился")
                         all_clients.remove(awaiting_client)
