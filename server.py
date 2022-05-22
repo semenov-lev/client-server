@@ -26,20 +26,20 @@ def arg_parser():
 
 
 @log
-def message_handler(message, client, messages, accounts):
+def message_handler(message, client, queue, messages, accounts, all_clients):
     """
     Функция принимает и обрабатывает message - словарь,
-    регистрирует новых пользователей и добавляет кортеж "получатель, сообщение"
+    регистрирует новых пользователей и добавляет message
     в список messages
 
     :param message
-    :param peername
+    :param client
+    :param queue:
     :param messages
     :param accounts
+    :param all_clients:
     :return
     """
-
-    # TODO: Доработать словарь, отправку по адресам
 
     try:
         SERVER_LOGGER.debug("Обработка сообщения от клиента")
@@ -58,6 +58,10 @@ def message_handler(message, client, messages, accounts):
                                             "alert": f"Пользователь {sender} уже существует!"}))
                 SERVER_LOGGER.warning(f"Response 400, Пользователь {sender} уже существует!")
 
+        elif message["action"] == 'quit':
+            disconnect_client(client, queue, all_clients, accounts)
+            return
+
         elif message["action"] == 'msg':
             sender = message["from"]
             destination = message["to"]
@@ -65,7 +69,7 @@ def message_handler(message, client, messages, accounts):
                 raise UserWarning
             else:
                 SERVER_LOGGER.debug(f"Получено сообщение от {sender} к {destination}")
-                messages.append(tuple((sender, message)))
+                messages.append(message)
         else:
             raise KeyError
 
@@ -82,8 +86,46 @@ def message_handler(message, client, messages, accounts):
     return
 
 
+@log
+def send_to_address(awaiting_clients, messages, accounts, all_clients):
+    message = messages.pop(0)
+    destination_name = message["to"]
+    try:
+        if accounts[destination_name] in awaiting_clients:
+            accounts[destination_name].send(encode_message(message))
+    except:
+        disconnect_client(accounts[destination_name], awaiting_clients, all_clients, accounts)
+
+
+@log
+def disconnect_client(client, queue, all_clients, accounts):
+    '''
+    Удаляет информацию о пользователе и отключает его от сокета
+
+    :param client:
+    :param queue:
+    :param all_clients:
+    :param accounts:
+    :return:
+    '''
+    # try:
+    all_clients.remove(client)
+    queue.remove(client)
+    for k, v in accounts:
+        if v == client:
+            client_name = k
+            del accounts[client_name]
+    client.close()
+    SERVER_LOGGER.info(f"Клиент {client} покинул чат")
+    # except:
+    #     SERVER_LOGGER.critical(f"При отключении пользователя {client} произошла ошибка!")
+    #     print(f"При отключении пользователя {client} произошла ошибка!")
+    #     sys.exit(1)
+
+
 def main():
     """
+
     server.py -a [<address>] -p [<port>]
     :return:
     """
@@ -111,6 +153,8 @@ def main():
     messages = []
     accounts = {}
 
+    SERVER_LOGGER.info("Сервер запущен!")
+    print("Сервер запущен!")
     while True:
         try:
             client, client_address = s.accept()
@@ -138,20 +182,12 @@ def main():
                         received_data = recv_client.recv(variables.MAX_PACKAGE_LENGTH)
                         received_msg = decode_data(received_data)
                         print(f"Получил сообщение {received_msg}")
-                        # messages.append(message_handler(received_msg))
-                        message_handler(received_msg, recv_client, messages, accounts)
+                        message_handler(received_msg, recv_client, receive_lst, messages, accounts, all_clients)
                     except:
-                        SERVER_LOGGER.info(f"Клиент {recv_client.getpeername()} отключился")
-                        all_clients.remove(recv_client)
+                        disconnect_client(recv_client, receive_lst, all_clients, accounts)
 
             if awaiting_lst and messages:
-                message_data = encode_message(messages.pop(0))
-                for awaiting_client in awaiting_lst:
-                    try:
-                        awaiting_client.send(message_data)
-                    except:
-                        SERVER_LOGGER.info(f"Клиент {awaiting_client.getpeername()} отключился")
-                        all_clients.remove(awaiting_client)
+                send_to_address(awaiting_lst, messages, accounts, all_clients)
 
 
 if __name__ == "__main__":

@@ -44,25 +44,34 @@ def presence_message(account_name):
 
 @log
 def response_handler(response):
-    if response["response"] == "200":
-        print(f"Сообщение от сервера: {response}")
-        CLIENT_LOGGER.info(f"Response: 200, ОК")
-    else:
-        print(f"Сообщение от сервера: {response}")
-        CLIENT_LOGGER.warning(f"Response: {response}!!!")
+    code = response["response"]
+    if code == "200":
+        print(f"\nCервер: {code}, OK")
+        CLIENT_LOGGER.info(f"Cервер: {code}, OK")
+    elif code == "400":
+        print(f"\nCервер: {code}, {response['alert']}")
+        CLIENT_LOGGER.warning(f"Cервер: {code}, {response['alert']}")
+    elif code == "404":
+        print(f"\nCервер: {code}, {response['alert']}")
+        CLIENT_LOGGER.warning(f"Cервер: {code}, {response['alert']}")
 
 
 @log
 def user_interaction(sock, account_name):
     while True:
-        dest = str(input("Имя получателя, или '/q' для выхода: "))
-        if dest == '/q':
-            sock.close()
-            sys.exit(0)
-        msg = str(input(f"Cообщение для {dest}: "))
+        try:
+            time.sleep(0.5)
+            dest = str(input("\nИмя получателя, или '/q' для выхода: "))
+            if dest == '/q':
+                logout(sock)
+            msg = str(input(f"\nCообщение для {dest}: "))
 
-        message_data = encode_message(send_message(msg, account_name, dest))
-        sock.send(message_data)
+            message_data = encode_message(send_message(msg, account_name, dest))
+            sock.send(message_data)
+        except ConnectionAbortedError:
+            print("\nСоединение разорвано!")
+            CLIENT_LOGGER.warning("\nСоединение разорвано!")
+            break
 
 
 @log
@@ -79,22 +88,38 @@ def send_message(message, account_name, dest):
 
 
 @log
+def logout(sock):
+    sock.send(encode_message({
+        "action": "quit"
+    }))
+    time.sleep(0.5)
+    sys.exit(0)
+
+
+@log
 def receive_handler(sock, account_name):
     while True:
-        message = decode_data(sock.recv(variables.MAX_PACKAGE_LENGTH))
-
         try:
+            message = decode_data(sock.recv(variables.MAX_PACKAGE_LENGTH))
             # Сообщения пользователей
             if "action" in message and "to" in message:
                 if message["action"] == "msg":
                     if message["to"] == account_name or message["to"] == "#all":
-                        print(f"{message['from']}: {message['message']}")
-                CLIENT_LOGGER.info(f"Сообщение от пользователя {message['from']} для {message['to']}: {message['message']}")
+                        print(f"\n{message['from']}: {message['message']}")
+                CLIENT_LOGGER.info(
+                    f"Сообщение от пользователя {message['from']} для {message['to']}: {message['message']}")
             else:
                 # Сообщение от сервера
                 response_handler(message)
+        except ConnectionAbortedError:
+            print("\nСоединение разорвано!")
+            CLIENT_LOGGER.warning("Соединение разорвано!")
+            break
         except KeyError:
-            print("receive_handler не распознал ключ в ответе")
+            CLIENT_LOGGER.error("Отсутствует необходимый ключ в ответе")
+            print("\nОтсутствует необходимый ключ в ответе")
+            break
+
 
 
 def main():
@@ -136,22 +161,16 @@ def main():
         CLIENT_LOGGER.critical("Ошибка соединения с сервером!")
         sys.exit(1)
 
-    # try:
-    # Ввод
     ui = threading.Thread(target=user_interaction, args=(server_socket, ACCOUNT_NAME))
     ui.daemon = True
     ui.start()
 
-    # Вывод
-
     recv = threading.Thread(target=receive_handler, args=(server_socket, ACCOUNT_NAME))
     recv.daemon = True
     recv.start()
-    # except:
-    #     CLIENT_LOGGER.debug(f"Соединение прервано")
-    #     sys.exit(1)
 
     while True:
+        time.sleep(1)
         if ui.is_alive() and recv.is_alive():
             continue
         break
