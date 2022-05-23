@@ -63,7 +63,10 @@ def user_interaction(sock, account_name):
             time.sleep(0.5)
             dest = str(input("\nИмя получателя, или '/q' для выхода: "))
             if dest == '/q':
-                logout(sock)
+                sock.send(encode_message({
+                    "action": "quit"
+                }))
+                break
             msg = str(input(f"\nCообщение для {dest}: "))
 
             message_data = encode_message(send_message(msg, account_name, dest))
@@ -85,15 +88,6 @@ def send_message(message, account_name, dest):
         "from": account_name,
         "message": message
     }
-
-
-@log
-def logout(sock):
-    sock.send(encode_message({
-        "action": "quit"
-    }))
-    time.sleep(0.5)
-    sys.exit(0)
 
 
 @log
@@ -170,7 +164,7 @@ def main():
     recv.start()
 
     while True:
-        time.sleep(1)
+        # time.sleep(0.5)
         if ui.is_alive() and recv.is_alive():
             continue
         break

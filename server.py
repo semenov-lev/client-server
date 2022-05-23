@@ -108,19 +108,17 @@ def disconnect_client(client, queue, all_clients, accounts):
     :param accounts:
     :return:
     '''
-    # try:
+    client_name = None
     all_clients.remove(client)
     queue.remove(client)
-    for k, v in accounts:
+    for k, v in accounts.items():
         if v == client:
             client_name = k
-            del accounts[client_name]
+            del accounts[k]
+            break
     client.close()
-    SERVER_LOGGER.info(f"Клиент {client} покинул чат")
-    # except:
-    #     SERVER_LOGGER.critical(f"При отключении пользователя {client} произошла ошибка!")
-    #     print(f"При отключении пользователя {client} произошла ошибка!")
-    #     sys.exit(1)
+    print(f"Клиент {client_name} покинул чат")
+    SERVER_LOGGER.info(f"Клиент {client_name} покинул чат")
 
 
 def main():
@@ -181,7 +179,6 @@ def main():
                         SERVER_LOGGER.info(f"Получено сообщение от клиента {peername}")
                         received_data = recv_client.recv(variables.MAX_PACKAGE_LENGTH)
                         received_msg = decode_data(received_data)
-                        print(f"Получил сообщение {received_msg}")
                         message_handler(received_msg, recv_client, receive_lst, messages, accounts, all_clients)
                     except:
                         disconnect_client(recv_client, receive_lst, all_clients, accounts)
