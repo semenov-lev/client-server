@@ -28,8 +28,8 @@ def host_range_ping():
         last_oct = int(str(ip).split('.')[-1])
         if last_oct + diapason > 255:
             diapason = 256 - last_oct
-        host_ping([str(ip + i) for i in range(diapason)])
+        return host_ping([str(ip + i) for i in range(diapason)])
 
 
 if __name__ == "__main__":
-    host_range_ping()
+    print(host_range_ping())

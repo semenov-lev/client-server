@@ -30,10 +30,10 @@ def host_ping(nodes: list):
         else:
             results["Unreachable"].append(str(node))
 
-    print(f"Доступные адреса: {results['Reachable']}\nНедоступные адреса: {results['Unreachable']}")
+    return results
 
 
 if __name__ == "__main__":
     addresses = ['yandex.ru', 'google.com', '127.0.0.1', 'asdasdasdasudih']
 
-    host_ping(addresses)
+    print(host_ping(addresses))
