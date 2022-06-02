@@ -35,13 +35,13 @@ class Server:
         self.address = address
         self.port = port
         try:
-            ip_address(address)
+            ip_address(self.address)
         except ValueError:
             SERVER_LOGGER.critical("Некорректно введен адрес")
             sys.exit(1)
         self.sock = socket(AF_INET, SOCK_STREAM)
 
-        if 1024 > port or port > 65535:
+        if 1024 > self.port or self.port > 65535:
             SERVER_LOGGER.critical("Значение <port> должно быть числом, в диапазоне с 1024 по 65535")
             sys.exit(1)
 
@@ -83,8 +83,7 @@ class Server:
                         except Exception as e:
                             print(e)
                             self.disconnect_client(recv_client)
-
-                if self.awaiting_lst and self.messages:  # Лучше будет while self.awaiting_lst ...
+                while self.awaiting_lst and self.messages:  # Лучше будет while self.awaiting_lst ...
                     self.send_to_address()
 
     @log
