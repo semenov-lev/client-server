@@ -10,6 +10,7 @@ import common.variables as variables
 from common.utils import encode_message, decode_data
 from log import server_log_config
 from decorators import log
+from metaclasses import ServerControl
 
 SERVER_LOGGER = logging.getLogger("server_logger")
 
@@ -25,7 +26,9 @@ def arg_parser():
     return address, port
 
 
-class Server:
+class Server(metaclass=ServerControl):
+    test_sock = socket(AF_INET, SOCK_STREAM)
+
     def __init__(self, address, port):
         self.all_clients = []
         self.receive_lst = []
