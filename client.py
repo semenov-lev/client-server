@@ -10,6 +10,7 @@ import common.variables as variables
 from common.utils import encode_message, decode_data
 from log import client_log_config
 from decorators import log
+from metaclasses import ServerControl
 
 CLIENT_LOGGER = logging.getLogger("client_logger")
 
@@ -25,7 +26,7 @@ def arg_parser():
     return address, port
 
 
-class Client:
+class Client(metaclass=ServerControl):
     def __init__(self, server_address, server_port):
         self.server_address = server_address
         self.server_port = server_port
