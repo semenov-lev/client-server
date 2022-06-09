@@ -26,8 +26,25 @@ class ServerVerifier(type):
 
 
 class ClientVerifier(type):
-    def __init__(cls, clsname, bases, cls_dict):
-        super().__init__(clsname, bases, cls_dict)
-        for k, v in cls_dict.items():
-            for ins in dis.get_instructions(cls_dict[k]):
-                print(ins)
+    # def __init__(cls, clsname, bases, cls_dict):
+    #     super().__init__(clsname, bases, cls_dict)
+    #     for k, v in cls_dict.items():
+    #         for ins in dis.get_instructions(cls_dict[k]):
+    #             print(ins)
+    #
+    #     for i in bases:
+    #         print(i)
+    def __init__(cls, clsname, bases, clsdict):
+        super().__init__(clsname, bases, clsdict)
+        # Список методов, которые используются в функциях класса:
+        methods = []
+        for func in clsdict:
+            # Пробуем
+            try:
+                ret = dis.get_instructions(clsdict[func])
+                # Если не функция то ловим исключение
+            except TypeError:
+                pass
+            else:
+                for instruction in ret:
+                    print(instruction)

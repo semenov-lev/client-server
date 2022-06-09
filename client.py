@@ -27,45 +27,22 @@ def arg_parser():
 
 
 class Client(metaclass=ClientVerifier):
-    def __init__(self, server_address, server_port):
-        self.server_address = server_address
-        self.server_port = server_port
-        self.server_socket = None
+    def __init__(self, server_socket):
+        self.server_socket = server_socket
         self.account_name = ""
-
-        try:
-            ip_address(self.server_address)
-        except ValueError:
-            CLIENT_LOGGER.critical("Некорректно введен адресc!")
-            sys.exit(1)
-
-        if 1024 > self.server_port or self.server_port > 65535:
-            CLIENT_LOGGER.critical("Значение <port> должно быть числом, в диапазоне с 1024 по 65535")
-            sys.exit(1)
 
     @log
     def run(self):
-        CLIENT_LOGGER.debug(f"Подключаемся к серверу c адресом {self.server_address}, портом {self.server_port}...")
+        self.account_name = str(input("Ввести имя аккаунта: "))
 
-        try:
-            self.server_socket = socket(AF_INET, SOCK_STREAM)
-            self.server_socket.connect((self.server_address, self.server_port))
+        CLIENT_LOGGER.info(f"Отправляем сообщение о присутствии")
 
-            self.account_name = str(input("Ввести имя аккаунта: "))
+        # Отправляем приветствие и разбираем отклик
+        presence_data = encode_message(self.presence_message())
+        self.server_socket.send(presence_data)
 
-            CLIENT_LOGGER.info(f"Отправляем сообщение о присутствии")
-
-            # Отправляем приветствие и разбираем отклик
-            presence_data = encode_message(self.presence_message())
-            self.server_socket.send(presence_data)
-
-            response_data = self.server_socket.recv(variables.MAX_PACKAGE_LENGTH)
-            self.response_handler(decode_data(response_data))
-
-        except Exception as e:
-            print(e)
-            CLIENT_LOGGER.critical("Ошибка соединения с сервером!")
-            sys.exit(1)
+        response_data = self.server_socket.recv(variables.MAX_PACKAGE_LENGTH)
+        self.response_handler(decode_data(response_data))
 
         ui = threading.Thread(target=self.user_interaction)
         ui.daemon = True
@@ -175,7 +152,28 @@ def main():
 
     server_address, server_port = arg_parser()
 
-    client = Client(server_address, server_port)
+    CLIENT_LOGGER.debug(f"Подключаемся к серверу c адресом {server_address}, портом {server_port}...")
+
+    try:
+        ip_address(server_address)
+    except ValueError:
+        CLIENT_LOGGER.critical("Некорректно введен адресc!")
+        sys.exit(1)
+
+    if 1024 > server_port or server_port > 65535:
+        CLIENT_LOGGER.critical("Значение <port> должно быть числом, в диапазоне с 1024 по 65535")
+        sys.exit(1)
+
+    try:
+        server_socket = socket(AF_INET, SOCK_STREAM)
+        server_socket.connect((server_address, server_port))
+
+    except Exception as e:
+        print(e)
+        CLIENT_LOGGER.critical("Ошибка соединения с сервером!")
+        sys.exit(1)
+
+    client = Client(server_socket)
 
     client.run()
 

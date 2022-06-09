@@ -27,8 +27,6 @@ def arg_parser():
 
 
 class Server(metaclass=ServerVerifier):
-    test_sock = socket(AF_INET, SOCK_STREAM)
-
     def __init__(self, address, port):
         self.all_clients = []
         self.receive_lst = []
