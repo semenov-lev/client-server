@@ -8,6 +8,7 @@ from socket import socket, AF_INET, SOCK_STREAM
 
 import common.variables as variables
 from common.utils import encode_message, decode_data
+from descriptors import Host, Port
 from log import server_log_config
 from decorators import log
 from metaclasses import ServerVerifier
@@ -27,6 +28,9 @@ def arg_parser():
 
 
 class Server(metaclass=ServerVerifier):
+    address = Host()
+    port = Port()
+
     def __init__(self, address, port):
         self.all_clients = []
         self.receive_lst = []
@@ -35,16 +39,7 @@ class Server(metaclass=ServerVerifier):
         self.accounts = {}
         self.address = address
         self.port = port
-        try:
-            ip_address(self.address)
-        except ValueError:
-            SERVER_LOGGER.critical("Некорректно введен адрес")
-            sys.exit(1)
         self.sock = socket(AF_INET, SOCK_STREAM)
-
-        if 1024 > self.port or self.port > 65535:
-            SERVER_LOGGER.critical("Значение <port> должно быть числом, в диапазоне с 1024 по 65535")
-            sys.exit(1)
 
     def run(self):
         SERVER_LOGGER.debug(f"Запуск сервера c адресом: {self.address}, портом: {self.port}")
