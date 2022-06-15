@@ -31,6 +31,7 @@ class Host:
             LOGGER.critical("Некорректно введен адрес")
             print("Некорректно введен адрес!")
             sys.exit(1)
+        instance.__dict__[self.name] = value
 
     def __set_name__(self, owner, name):
         self.name = name
