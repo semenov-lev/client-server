@@ -31,7 +31,6 @@ class Client(metaclass=ClientVerifier):
         self.server_socket = server_socket
         self.account_name = ""
 
-    @log
     def run(self):
         self.account_name = str(input("Ввести имя аккаунта: "))
 

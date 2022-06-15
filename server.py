@@ -84,7 +84,7 @@ class Server(metaclass=ServerVerifier):
                         except Exception as e:
                             print(e)
                             self.disconnect_client(recv_client)
-                while self.awaiting_lst and self.messages:  # Лучше будет while self.awaiting_lst ...
+                while self.awaiting_lst and self.messages:
                     self.send_to_address()
 
     @log
