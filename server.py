@@ -12,6 +12,7 @@ from descriptors import Host, Port
 from log import server_log_config
 from decorators import log
 from metaclasses import ServerVerifier
+from server_database import ServerStorage
 
 SERVER_LOGGER = logging.getLogger("server_logger")
 
@@ -40,6 +41,7 @@ class Server(metaclass=ServerVerifier):
         self.address = address
         self.port = port
         self.sock = socket(AF_INET, SOCK_STREAM)
+        self.database = ServerStorage()
 
     def run(self):
         SERVER_LOGGER.debug(f"Запуск сервера c адресом: {self.address}, портом: {self.port}")
@@ -130,32 +132,36 @@ class Server(metaclass=ServerVerifier):
 
         try:
             SERVER_LOGGER.debug("Обработка сообщения от клиента")
-            if message["action"] == 'presence':
-                sender = message["user"]["account_name"]
 
-                if sender not in self.accounts:
-                    self.accounts[sender] = client
+            sender_ip, sender_port = client.getpeername()
+
+            if message["action"] == 'presence':
+                sender_login = message["user"]["account_name"]
+
+                if sender_login not in self.accounts:
+                    self.accounts[sender_login] = client
+                    self.database.login(sender_login, sender_ip, sender_port)
                     client.send(encode_message({"response": "200",
                                                 "time": time()}))
-                    SERVER_LOGGER.debug(f"Регистрация нового пользователя {sender}")
+                    SERVER_LOGGER.debug(f"Регистрация нового пользователя {sender_login}")
 
                 else:
                     client.send(encode_message({"response": "400",
                                                 "time": time(),
-                                                "alert": f"Пользователь {sender} уже существует!"}))
-                    SERVER_LOGGER.warning(f"Response 400, Пользователь {sender} уже существует!")
+                                                "alert": f"Пользователь {sender_login} уже существует!"}))
+                    SERVER_LOGGER.warning(f"Response 400, Пользователь {sender_login} уже существует!")
 
             elif message["action"] == 'quit':
                 self.disconnect_client(client)
                 return
 
             elif message["action"] == 'msg':
-                sender = message["from"]
+                sender_login = message["from"]
                 destination = message["to"]
                 if destination not in self.accounts:
                     raise UserWarning
                 else:
-                    SERVER_LOGGER.debug(f"Получено сообщение от {sender} к {destination}")
+                    SERVER_LOGGER.debug(f"Получено сообщение от {sender_login} к {destination}")
                     self.messages.append(message)
             else:
                 raise KeyError
