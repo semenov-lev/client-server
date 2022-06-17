@@ -57,27 +57,38 @@ class Client(metaclass=ClientVerifier):
                 continue
             break
 
-    @log
-    def user_interaction(self):
-        while True:
-            try:
-                time.sleep(0.5)
-                dest = str(input("\nИмя получателя, или '/q' для выхода: "))
-                if dest == '/q':
-                    self.server_socket.send(encode_message({
-                        "action": "quit"
-                    }))
-                    break
-                msg = str(input(f"\nCообщение для {dest}: "))
+    def get_menu(self):
+        menu_lst = ["Написать сообщение пользователю: /w", "Контакты: /c", "Выход: /q", "Список команд: /help /h"]
+        for _ in menu_lst:
+            print("\n", _)
 
-                message_data = encode_message(self.send_message(msg, dest))
-                self.server_socket.send(message_data)
+    def user_interaction(self):
+        self.get_menu()
+        while True:
+            destination = ""
+            msg = ""
+            time.sleep(0.5)
+            command = str(input("\n"))
+            try:
+                if command == '/q':
+                    self.server_socket.send(encode_message({"action": "quit"}))
+                    break
+                elif command in ("/help", "/h"):
+                    self.get_menu()
+                elif command == "/w":
+                    destination = str(input("\nВведите имя адресата, или /q, чтобы выйти: "))
+                    print(f"\n{'–' * 100}\nЧат с пользователем '{destination}'\n{'–' * 100}")
+                    while msg != "/q":
+                        msg = str(input())
+                        message_data = encode_message(self.send_message(msg, destination))
+                        self.server_socket.send(message_data)
+                    else:
+                        print(f"\n{'–' * 100}\nВыход в меню\n{'–' * 100}")
             except ConnectionAbortedError:
                 print("\nСоединение разорвано!")
                 CLIENT_LOGGER.warning("\nСоединение разорвано!")
                 break
 
-    @log
     def receive_handler(self):
         while True:
             try:
@@ -86,7 +97,7 @@ class Client(metaclass=ClientVerifier):
                 if "action" in message and "to" in message:
                     if message["action"] == "msg":
                         if message["to"] == self.account_name or message["to"] == "#all":
-                            print(f"\n{message['from']}: {message['message']}")
+                            print(f"\n{message['from']}: {message['message']}\n")
                     CLIENT_LOGGER.info(
                         f"Сообщение от пользователя {message['from']} для {message['to']}: {message['message']}")
                 else:
@@ -101,7 +112,6 @@ class Client(metaclass=ClientVerifier):
                 print("\nОтсутствует необходимый ключ в ответе")
                 break
 
-    @log
     def presence_message(self):
         action = variables.PRESENCE
         timestamp = int(time.time())
@@ -117,7 +127,6 @@ class Client(metaclass=ClientVerifier):
             }
         }
 
-    @log
     def response_handler(self, response):
         code = response["response"]
         if code == "200":

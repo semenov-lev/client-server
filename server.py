@@ -91,8 +91,7 @@ class Server(metaclass=ServerVerifier):
         try:
             if self.accounts[destination_name] in self.awaiting_lst:
                 self.accounts[destination_name].send(encode_message(message))
-        except Exception as e:
-            print(e)
+        except Exception:
             self.disconnect_client(self.accounts[destination_name])
 
     @log
