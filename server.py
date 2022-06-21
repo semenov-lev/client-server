@@ -134,7 +134,7 @@ class Server(metaclass=ServerVerifier):
 
             sender_ip, sender_port = client.getpeername()
 
-            if message["action"] == 'presence':
+            if message["action"] == variables.PRESENCE:
                 sender_login = message["user"]["account_name"]
 
                 if sender_login not in self.accounts:
@@ -150,11 +150,11 @@ class Server(metaclass=ServerVerifier):
                                                 "alert": f"Пользователь {sender_login} уже существует!"}))
                     SERVER_LOGGER.warning(f"Response 400, Пользователь {sender_login} уже существует!")
 
-            elif message["action"] == 'quit':
+            elif message["action"] == variables.QUIT:
                 self.disconnect_client(client)
                 return
 
-            elif message["action"] == 'msg':
+            elif message["action"] == variables.MSG:
                 sender_login = message["from"]
                 destination = message["to"]
                 if destination not in self.accounts:
@@ -162,6 +162,12 @@ class Server(metaclass=ServerVerifier):
                 else:
                     SERVER_LOGGER.debug(f"Получено сообщение от {sender_login} к {destination}")
                     self.messages.append(message)
+            elif message["action"] == variables.GET_CONTACTS:
+                contacts = self.database.get_contacts(message["user_login"])
+                client.send(encode_message({
+                    "response": "202",
+                    "alert": contacts
+                }))
             else:
                 raise KeyError
 

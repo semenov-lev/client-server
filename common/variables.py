@@ -20,9 +20,11 @@ TO = 'to'
 FROM = 'from'
 
 # Прочие ключи, используемые в протоколе
-PRESENCE = 'presence'
-RESPONSE = 'response'
-ERROR = 'error'
-MSG = 'msg'
-LISTEN_ACCOUNT_NAME = 'listen_account'
-SENDER_ACCOUNT_NAME = 'sender_account'
+PRESENCE = "presence"
+GET_CONTACTS = "get_contacts"
+RESPONSE = "response"
+QUIT = "quit"
+ERROR = "error"
+MSG = "msg"
+LISTEN_ACCOUNT_NAME = "listen_account"
+SENDER_ACCOUNT_NAME = "sender_account"

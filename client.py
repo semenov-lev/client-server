@@ -65,7 +65,6 @@ class Client(metaclass=ClientVerifier):
     def user_interaction(self):
         self.get_menu()
         while True:
-            destination = ""
             msg = ""
             time.sleep(0.5)
             command = str(input("\n"))
@@ -84,6 +83,8 @@ class Client(metaclass=ClientVerifier):
                         self.server_socket.send(message_data)
                     else:
                         print(f"\n{'–' * 100}\nВыход в меню\n{'–' * 100}")
+                elif command == "/c":
+                    self.get_contacts()
             except ConnectionAbortedError:
                 print("\nСоединение разорвано!")
                 CLIENT_LOGGER.warning("\nСоединение разорвано!")
@@ -125,6 +126,16 @@ class Client(metaclass=ClientVerifier):
                 "account_name": self.account_name,
                 "status": status
             }
+        }
+
+    def get_contacts(self):
+        action = variables.GET_CONTACTS
+        timestamp = int(time.time())
+
+        return {
+            "action": action,
+            "time": timestamp,
+            "user_login": self.account_name
         }
 
     def response_handler(self, response):

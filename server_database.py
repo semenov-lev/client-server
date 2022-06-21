@@ -55,15 +55,15 @@ class ServerStorage:
 
         login_history_table = Table("login_history", self.metadata,
                                     Column("id", Integer, primary_key=True),
-                                    Column("user_id", ForeignKey("Users.id")),
+                                    Column("user_id", ForeignKey("Users.id", ondelete="CASCADE")),
                                     Column("datatime", DateTime, default=datetime.datetime.now()),
                                     Column("ip", String)
                                     )
 
         contacts_table = Table("Contacts", self.metadata,
                                Column("id", Integer, primary_key=True),
-                               Column("owner_id", Integer),
-                               Column("client_id", Integer)
+                               Column("owner_id", ForeignKey("Users.id", ondelete="CASCADE")),
+                               Column("client_id", ForeignKey("Users.id", ondelete="CASCADE"))
                                )
 
         self.metadata.create_all(self.db_engine)
@@ -86,7 +86,28 @@ class ServerStorage:
         self.session.add(self.LoginHistory(user.id, ip))
         self.session.commit()
 
+    def get_contacts(self, login):
+        contacts = []
+        login_id = self.session.query(self.Users).filter_by(login=login).first().id
+        rez = self.session.query(self.Contacts, self.Users.login).\
+            filter_by(owner_id=login_id).\
+            join(self.Users, self.Contacts.client_id == self.Users.id).all()
+        for i in rez:
+            contacts.append(i.login)
+        return contacts
+
 
 if __name__ == "__main__":
     debugging_db = ServerStorage()
+
+    contacts_to_add = [debugging_db.Contacts(1, 2),
+                       debugging_db.Contacts(2, 3),
+                       debugging_db.Contacts(1, 3),
+                       debugging_db.Contacts(1, 4)]
+
     debugging_db.login("first", "127.0.0.2", 7777)
+    debugging_db.login("second", "127.0.0.3", 7777)
+    debugging_db.login("third", "127.0.0.4", 7777)
+    debugging_db.session.add_all(contacts_to_add)
+    debugging_db.session.commit()
+    print(debugging_db.get_contacts("first"))
