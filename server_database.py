@@ -96,6 +96,22 @@ class ServerStorage:
             contacts.append(i.login)
         return contacts
 
+    def add_contact(self, login, username):
+        contacts = self.get_contacts(login)
+        if username not in contacts:
+            login_id = self.session.query(self.Users).filter_by(login=login).first().id
+            username_id = self.session.query(self.Users).filter_by(login=username).first().id
+            self.session.add(self.Contacts(login_id, username_id))
+            self.session.commit()
+
+    def del_contact(self, login, username):
+        contacts = self.get_contacts(login)
+        if username in contacts:
+            login_id = self.session.query(self.Users).filter_by(login=login).first().id
+            username_id = self.session.query(self.Users).filter_by(login=username).first().id
+            self.session.delete(self.Contacts(login_id, username_id))
+            self.session.commit()
+
 
 if __name__ == "__main__":
     debugging_db = ServerStorage()

@@ -162,12 +162,27 @@ class Server(metaclass=ServerVerifier):
                 else:
                     SERVER_LOGGER.debug(f"Получено сообщение от {sender_login} к {destination}")
                     self.messages.append(message)
+
             elif message["action"] == variables.GET_CONTACTS:
                 contacts = self.database.get_contacts(message["user_login"])
                 client.send(encode_message({
                     "response": "202",
                     "alert": contacts
                 }))
+
+            elif message["action"] == variables.ADD_CONTACT:
+                try:
+                    self.database.add_contact(message["user_login"], message["user_id"])
+                    client.send(encode_message({"response": "201"}))
+                except Exception as e:
+                    print("Ошибка базы данных: ", e)
+
+            elif message["action"] == variables.DEL_CONTACT:
+                try:
+                    self.database.del_contact(message["user_login"], message["user_id"])
+                    client.send(encode_message({"response": "202"}))
+                except Exception as e:
+                    print("Ошибка базы данных: ", e)
             else:
                 raise KeyError
 

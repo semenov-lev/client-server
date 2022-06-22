@@ -30,6 +30,7 @@ class Client(metaclass=ClientVerifier):
     def __init__(self, server_socket):
         self.server_socket = server_socket
         self.account_name = ""
+        self.contacts = []
 
     def run(self):
         self.account_name = str(input("Ввести имя аккаунта: "))
@@ -37,11 +38,9 @@ class Client(metaclass=ClientVerifier):
         CLIENT_LOGGER.info(f"Отправляем сообщение о присутствии")
 
         # Отправляем приветствие и разбираем отклик
-        presence_data = encode_message(self.presence_message())
-        self.server_socket.send(presence_data)
-
-        response_data = self.server_socket.recv(variables.MAX_PACKAGE_LENGTH)
-        self.response_handler(decode_data(response_data))
+        self.presence_message()
+        # Получаем список контактов из базы данных сервера
+        self.get_contacts()
 
         ui = threading.Thread(target=self.user_interaction)
         ui.daemon = True
@@ -58,7 +57,9 @@ class Client(metaclass=ClientVerifier):
             break
 
     def get_menu(self):
-        menu_lst = ["Написать сообщение пользователю: /w", "Контакты: /c", "Выход: /q", "Список команд: /help /h"]
+        menu_lst = ["Написать сообщение пользователю: /w",
+                    "Контакты: /c", "Выход: /q",
+                    "Список команд: /help /h"]
         for _ in menu_lst:
             print("\n", _)
 
@@ -76,15 +77,41 @@ class Client(metaclass=ClientVerifier):
                     self.get_menu()
                 elif command == "/w":
                     destination = str(input("\nВведите имя адресата, или /q, чтобы выйти: "))
-                    print(f"\n{'–' * 100}\nЧат с пользователем '{destination}'\n{'–' * 100}")
                     while msg != "/q":
                         msg = str(input())
-                        message_data = encode_message(self.send_message(msg, destination))
-                        self.server_socket.send(message_data)
+                        self.server_socket.send(encode_message(self.send_message(msg, destination)))
                     else:
                         print(f"\n{'–' * 100}\nВыход в меню\n{'–' * 100}")
                 elif command == "/c":
-                    self.get_contacts()
+                    print(f"\n{'–' * 100}\nКонтакты\n{'–' * 100}")
+                    self.print_contacts()
+                    operations_lst = ["Список контактов: /list",
+                                      "Добавить контакт: /add <username>",
+                                      "Удалить контакт: /del <username>",
+                                      "Выход: /q"]
+                    for _ in operations_lst:
+                        print("\n", _)
+                    operation = ""
+                    while operation != "/q":
+                        self.get_contacts()
+                        operation = str(input("\n"))
+                        if operation.split()[0] == "/list":
+                            self.print_contacts()
+                        if operation.split()[0] == "/add":
+                            try:
+                                username = operation.split()[1]
+                                self.add_contact(username)
+                            except IndexError:
+                                print("Некорректный ввод")
+                        elif operation.split()[0] == "/del":
+                            try:
+                                username = operation.split()[1]
+                                self.delete_contact(username)
+                            except IndexError:
+                                print("Некорректный ввод")
+                    else:
+                        print(f"\n{'–' * 100}\nВыход в меню\n{'–' * 100}")
+
             except ConnectionAbortedError:
                 print("\nСоединение разорвано!")
                 CLIENT_LOGGER.warning("\nСоединение разорвано!")
@@ -94,7 +121,7 @@ class Client(metaclass=ClientVerifier):
         while True:
             try:
                 message = decode_data(self.server_socket.recv(variables.MAX_PACKAGE_LENGTH))
-                # Сообщения пользователей
+                # Разбор сообщения от пользователя
                 if "action" in message and "to" in message:
                     if message["action"] == "msg":
                         if message["to"] == self.account_name or message["to"] == "#all":
@@ -102,7 +129,7 @@ class Client(metaclass=ClientVerifier):
                     CLIENT_LOGGER.info(
                         f"Сообщение от пользователя {message['from']} для {message['to']}: {message['message']}")
                 else:
-                    # Сообщение от сервера
+                    # Разбор сообщения от сервера
                     self.response_handler(message)
             except ConnectionAbortedError:
                 print("\nСоединение разорвано!")
@@ -118,7 +145,7 @@ class Client(metaclass=ClientVerifier):
         timestamp = int(time.time())
         status = "Я здесь!"
 
-        return {
+        self.server_socket.send(encode_message({
             "action": action,
             "time": timestamp,
             "type": "status",
@@ -126,23 +153,54 @@ class Client(metaclass=ClientVerifier):
                 "account_name": self.account_name,
                 "status": status
             }
-        }
+        }))
+
+        response_data = self.server_socket.recv(variables.MAX_PACKAGE_LENGTH)
+        self.response_handler(decode_data(response_data))
 
     def get_contacts(self):
         action = variables.GET_CONTACTS
         timestamp = int(time.time())
 
-        return {
+        self.server_socket.send(encode_message({
             "action": action,
             "time": timestamp,
             "user_login": self.account_name
-        }
+        }))
+
+        response_data = self.server_socket.recv(variables.MAX_PACKAGE_LENGTH)
+        self.contacts = (decode_data(response_data))["alert"]
+
+    def print_contacts(self):
+        print("\n", '–' * 100)
+        print("Список контактов: ", "\n".join(self.contacts))
+        print("\n", '–' * 100)
+
+    def add_contact(self, nickname):
+        timestamp = int(time.time())
+
+        self.server_socket.send(encode_message({
+            "action": variables.ADD_CONTACT,
+            "user_id": nickname,
+            "time": timestamp,
+            "user_login": self.account_name
+        }))
+
+    def delete_contact(self, nickname):
+        timestamp = int(time.time())
+
+        self.server_socket.send(encode_message({
+            "action": variables.DEL_CONTACT,
+            "user_id": nickname,
+            "time": timestamp,
+            "user_login": self.account_name
+        }))
 
     def response_handler(self, response):
         code = response["response"]
-        if code == "200":
-            print(f"\nCервер: {code}, OK")
-            CLIENT_LOGGER.info(f"Cервер: {code}, OK")
+        if code in ("200", "201", "202"):
+            print(f"\nCервер: {code}")
+            CLIENT_LOGGER.info(f"Cервер: {code}")
         elif code == "400":
             print(f"\nCервер: {code}, {response['alert']}")
             CLIENT_LOGGER.warning(f"Cервер: {code}, {response['alert']}")
@@ -150,7 +208,6 @@ class Client(metaclass=ClientVerifier):
             print(f"\nCервер: {code}, {response['alert']}")
             CLIENT_LOGGER.warning(f"Cервер: {code}, {response['alert']}")
 
-    @log
     def send_message(self, message, dest):
         timestamp = int(time.time())
 

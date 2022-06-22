@@ -22,6 +22,8 @@ FROM = 'from'
 # Прочие ключи, используемые в протоколе
 PRESENCE = "presence"
 GET_CONTACTS = "get_contacts"
+ADD_CONTACT = "add_contact"
+DEL_CONTACT = "del_contact"
 RESPONSE = "response"
 QUIT = "quit"
 ERROR = "error"
