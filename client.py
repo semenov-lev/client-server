@@ -56,6 +56,9 @@ class Client(metaclass=ClientVerifier):
                 continue
             break
 
+    def send(self, message):
+        self.server_socket.send(encode_message(message))
+
     def get_menu(self):
         menu_lst = ["Написать сообщение пользователю: /w",
                     "Контакты: /c", "Выход: /q",
@@ -71,7 +74,7 @@ class Client(metaclass=ClientVerifier):
             command = str(input("\n"))
             try:
                 if command == '/q':
-                    self.server_socket.send(encode_message({"action": "quit"}))
+                    self.send({"action": "quit"})
                     break
                 elif command in ("/help", "/h"):
                     self.get_menu()
@@ -79,7 +82,7 @@ class Client(metaclass=ClientVerifier):
                     destination = str(input("\nВведите имя адресата, или /q, чтобы выйти: "))
                     while msg != "/q":
                         msg = str(input())
-                        self.server_socket.send(encode_message(self.send_message(msg, destination)))
+                        self.send(self.msg_to_users(msg, destination))
                     else:
                         print(f"\n{'–' * 100}\nВыход в меню\n{'–' * 100}")
                 elif command == "/c":
@@ -91,9 +94,9 @@ class Client(metaclass=ClientVerifier):
                                       "Добавить контакт: /add <username>",
                                       "Удалить контакт: /del <username>",
                                       "Выход: /q"]
+
                     print("\n ".join(operations_lst))
                     while operation != "/q":
-                        self.get_contacts()
                         operation = str(input("\n"))
                         if operation.split()[0] == "/list":
                             self.print_contacts()
@@ -141,7 +144,7 @@ class Client(metaclass=ClientVerifier):
         timestamp = int(time.time())
         status = "Я здесь!"
 
-        self.server_socket.send(encode_message({
+        self.send({
             "action": action,
             "time": timestamp,
             "type": "status",
@@ -149,7 +152,7 @@ class Client(metaclass=ClientVerifier):
                 "account_name": self.account_name,
                 "status": status
             }
-        }))
+        })
 
         response_data = self.server_socket.recv(variables.MAX_PACKAGE_LENGTH)
         self.response_handler(decode_data(response_data))
@@ -157,40 +160,38 @@ class Client(metaclass=ClientVerifier):
     def get_contacts(self):
         timestamp = int(time.time())
 
-        self.server_socket.send(encode_message({
+        self.send({
             "action": variables.GET_CONTACTS,
             "time": timestamp,
             "user_login": self.account_name
-        }))
-        return
+        })
 
     def print_contacts(self):
+        self.get_contacts()
+        time.sleep(0.5)
         print("\n", '–' * 100)
         print("Список контактов:\n", "\n ".join(self.contacts))
         print('–' * 100)
-        return
 
     def add_contact(self, nickname):
         timestamp = int(time.time())
 
-        self.server_socket.send(encode_message({
+        self.send({
             "action": variables.ADD_CONTACT,
             "user_id": nickname,
             "time": timestamp,
             "user_login": self.account_name
-        }))
-        return
+        })
 
     def delete_contact(self, nickname):
         timestamp = int(time.time())
 
-        self.server_socket.send(encode_message({
+        self.send({
             "action": variables.DEL_CONTACT,
             "user_id": nickname,
             "time": timestamp,
             "user_login": self.account_name
-        }))
-        return
+        })
 
     def response_handler(self, response):
         code = response["response"]
@@ -207,7 +208,7 @@ class Client(metaclass=ClientVerifier):
             print(f"\nCервер: {code}, {response['alert']}")
             CLIENT_LOGGER.warning(f"Cервер: {code}, {response['alert']}")
 
-    def send_message(self, message, dest):
+    def msg_to_users(self, message, dest):
         timestamp = int(time.time())
 
         return {

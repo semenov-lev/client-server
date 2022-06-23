@@ -151,7 +151,6 @@ class Server(metaclass=ServerVerifier):
 
             elif message["action"] == variables.QUIT:
                 self.disconnect_client(client)
-                return
 
             elif message["action"] == variables.MSG:
                 sender_login = message["from"]
@@ -195,7 +194,6 @@ class Server(metaclass=ServerVerifier):
             client.send(encode_message({"response": "400",
                                         "time": time(),
                                         "alert": "Неправильный запрос/JSON-объект"}))
-        return
 
 
 def main():
