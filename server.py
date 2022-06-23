@@ -78,8 +78,7 @@ class Server(metaclass=ServerVerifier):
                             received_data = recv_client.recv(variables.MAX_PACKAGE_LENGTH)
                             received_msg = decode_data(received_data)
                             self.message_handler(received_msg, recv_client)
-                        except Exception as e:
-                            print(e)
+                        except Exception:
                             self.disconnect_client(recv_client)
                 while self.awaiting_lst and self.messages:
                     self.send_to_address()

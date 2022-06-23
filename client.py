@@ -83,32 +83,28 @@ class Client(metaclass=ClientVerifier):
                     else:
                         print(f"\n{'–' * 100}\nВыход в меню\n{'–' * 100}")
                 elif command == "/c":
+                    operation = ""
+
                     print(f"\n{'–' * 100}\nКонтакты\n{'–' * 100}")
                     self.print_contacts()
                     operations_lst = ["Список контактов: /list",
                                       "Добавить контакт: /add <username>",
                                       "Удалить контакт: /del <username>",
                                       "Выход: /q"]
-                    for _ in operations_lst:
-                        print("\n", _)
-                    operation = ""
+                    print("\n ".join(operations_lst))
                     while operation != "/q":
                         self.get_contacts()
                         operation = str(input("\n"))
                         if operation.split()[0] == "/list":
                             self.print_contacts()
-                        if operation.split()[0] == "/add":
-                            try:
-                                username = operation.split()[1]
-                                self.add_contact(username)
-                            except IndexError:
-                                print("Некорректный ввод")
+                        elif operation.split()[0] == "/add":
+                            username = operation.split()[1]
+                            self.add_contact(username)
                         elif operation.split()[0] == "/del":
-                            try:
-                                username = operation.split()[1]
-                                self.delete_contact(username)
-                            except IndexError:
-                                print("Некорректный ввод")
+                            username = operation.split()[1]
+                            self.delete_contact(username)
+                        else:
+                            print("Некорректный ввод")
                     else:
                         print(f"\n{'–' * 100}\nВыход в меню\n{'–' * 100}")
 
@@ -159,22 +155,20 @@ class Client(metaclass=ClientVerifier):
         self.response_handler(decode_data(response_data))
 
     def get_contacts(self):
-        action = variables.GET_CONTACTS
         timestamp = int(time.time())
 
         self.server_socket.send(encode_message({
-            "action": action,
+            "action": variables.GET_CONTACTS,
             "time": timestamp,
             "user_login": self.account_name
         }))
-
-        response_data = self.server_socket.recv(variables.MAX_PACKAGE_LENGTH)
-        self.contacts = (decode_data(response_data))["alert"]
+        return
 
     def print_contacts(self):
         print("\n", '–' * 100)
-        print("Список контактов: ", "\n".join(self.contacts))
-        print("\n", '–' * 100)
+        print("Список контактов:\n", "\n ".join(self.contacts))
+        print('–' * 100)
+        return
 
     def add_contact(self, nickname):
         timestamp = int(time.time())
@@ -185,6 +179,7 @@ class Client(metaclass=ClientVerifier):
             "time": timestamp,
             "user_login": self.account_name
         }))
+        return
 
     def delete_contact(self, nickname):
         timestamp = int(time.time())
@@ -195,11 +190,15 @@ class Client(metaclass=ClientVerifier):
             "time": timestamp,
             "user_login": self.account_name
         }))
+        return
 
     def response_handler(self, response):
         code = response["response"]
         if code in ("200", "201", "202"):
-            print(f"\nCервер: {code}")
+            if "alert" in response:
+                # Если список контактов:
+                if type(response["alert"]) == list:
+                    self.contacts = response["alert"]
             CLIENT_LOGGER.info(f"Cервер: {code}")
         elif code == "400":
             print(f"\nCервер: {code}, {response['alert']}")

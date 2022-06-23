@@ -109,7 +109,7 @@ class ServerStorage:
         if username in contacts:
             login_id = self.session.query(self.Users).filter_by(login=login).first().id
             username_id = self.session.query(self.Users).filter_by(login=username).first().id
-            self.session.delete(self.Contacts(login_id, username_id))
+            self.session.query(self.Contacts).filter_by(owner_id=login_id, client_id=username_id).delete()
             self.session.commit()
 
 
