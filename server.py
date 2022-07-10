@@ -17,6 +17,7 @@ from server_database import ServerStorage
 SERVER_LOGGER = logging.getLogger("server_logger")
 
 
+
 @log
 def arg_parser():
     parser = argparse.ArgumentParser(description='Server script')
@@ -42,6 +43,7 @@ class Server(metaclass=ServerVerifier):
         self.port = port
         self.sock = socket(AF_INET, SOCK_STREAM)
         self.database = ServerStorage()
+        self._contacts = 0
 
     def run(self):
         SERVER_LOGGER.debug(f"Запуск сервера c адресом: {self.address}, портом: {self.port}")
@@ -167,6 +169,8 @@ class Server(metaclass=ServerVerifier):
                     "response": "202",
                     "alert": contacts
                 }))
+                self._contacts += 1
+                print(f"Контакты отправлены {self._contacts}-й раз")
 
             elif message["action"] == variables.ADD_CONTACT:
                 try:

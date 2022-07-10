@@ -3,24 +3,6 @@ import datetime
 from sqlalchemy import create_engine, Table, Column, MetaData, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import mapper, sessionmaker
 
-"""
-Начать реализацию класса «Хранилище» для серверной стороны. Хранение необходимо осуществлять в базе данных. 
- качестве СУБД использовать sqlite. Для взаимодействия с БД можно применять ORM.
-Опорная схема базы данных:
-На стороне сервера БД содержит следующие таблицы:
-    Client:
-        логин;
-        информация.
-        
-    ClientHistory:
-        время входа;
-        ip-адрес.
-        
-    Contacts (составляется на основании выборки всех записей с id_владельца):
-        id_владельца;
-        id_клиента.
-"""
-
 
 class ServerStorage:
     class Users:
@@ -50,21 +32,18 @@ class ServerStorage:
                             Column("id", Integer, primary_key=True),
                             Column("login", String, unique=True),
                             Column("ip", String),
-                            Column("port", Integer)
-                            )
+                            Column("port", Integer))
 
         login_history_table = Table("login_history", self.metadata,
                                     Column("id", Integer, primary_key=True),
                                     Column("user_id", ForeignKey("Users.id", ondelete="CASCADE")),
                                     Column("datatime", DateTime, default=datetime.datetime.now()),
-                                    Column("ip", String)
-                                    )
+                                    Column("ip", String))
 
         contacts_table = Table("Contacts", self.metadata,
                                Column("id", Integer, primary_key=True),
                                Column("owner_id", ForeignKey("Users.id", ondelete="CASCADE")),
-                               Column("client_id", ForeignKey("Users.id", ondelete="CASCADE"))
-                               )
+                               Column("client_id", ForeignKey("Users.id", ondelete="CASCADE")))
 
         self.metadata.create_all(self.db_engine)
         mapper(self.Users, users_table)
